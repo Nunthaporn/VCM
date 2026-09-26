@@ -1,0 +1,10 @@
+.env
+.venv/
+__pycache__/
+*.py[cod]
+*.log
+*.parquet
+*.bak
+VCM.reverted_backup.py
+vcm_snapshot_meta.json
+wip_by_so_no*.csv
