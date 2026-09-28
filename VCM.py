@@ -33,7 +33,7 @@ GROUP_KEYS = ["plant", "so_year", "so_no", "barcode"]
 PROCESS_COLUMNS = [*GROUP_KEYS, "process", "process_order", "process_date", "input_qty", "output_qty", "defect_qty", "barcode_count"]
 DATABASE_CHUNK_SIZE = 200_000
 SOURCE_START_DATE = pd.Timestamp("2026-07-09")
-DATA_MODEL_VERSION = "2026-09-26-v13"
+DATA_MODEL_VERSION = "2026-09-28-v14"
 SNAPSHOT_TTL_SECONDS = 3600
 SNAPSHOT_DATA_PATH = Path(__file__).with_name("vcm_snapshot.parquet")
 SNAPSHOT_SUMMARY_PATH = Path(__file__).with_name("vcm_barcode_summary.parquet")
@@ -258,9 +258,10 @@ def flow_metrics(process_rows: pd.DataFrame, summary: pd.DataFrame) -> pd.DataFr
     flow["wip_barcodes"] = 0
     for source, target in TRANSITIONS:
         waiting_mask = summary[source].notna() & summary[target].isna()
-        flow.loc[flow["process"] == source, "wip_qty"] = summary.loc[waiting_mask, "CUT_wip_basis"].clip(lower=0).sum()
-        # CUT is the canonical barcode source across every process.
-        flow.loc[flow["process"] == source, "wip_barcodes"] = int(summary.loc[waiting_mask, "CUT_barcode_count"].sum())
+        source_wip_basis = f"{source}_wip_basis"
+        source_barcode_count = f"{source}_barcode_count"
+        flow.loc[flow["process"] == source, "wip_qty"] = summary.loc[waiting_mask, source_wip_basis].clip(lower=0).sum()
+        flow.loc[flow["process"] == source, "wip_barcodes"] = int(summary.loc[waiting_mask, source_barcode_count].sum())
     return flow.assign(process_order=lambda frame: frame.index + 1)
 
 
@@ -300,6 +301,8 @@ def waiting_metrics(summary: pd.DataFrame) -> pd.DataFrame:
     now = datetime.now()
     for flow_order, (source, target) in enumerate(TRANSITIONS, start=1):
         waiting = summary[summary[source].notna() & summary[target].isna()].copy()
+        source_wip_basis = f"{source}_wip_basis"
+        source_barcode_count = f"{source}_barcode_count"
         minutes = (now - waiting[source]).dt.total_seconds().div(60) if not waiting.empty else pd.Series(dtype=float)
         if source == "CUT" and not waiting.empty:
             minutes = minutes[~waiting[source].dt.time.eq(time(0, 0))]
@@ -308,8 +311,8 @@ def waiting_metrics(summary: pd.DataFrame) -> pd.DataFrame:
             {
                 "flow": f"{source} -> {target}",
                 "flow_order": flow_order,
-                "waiting_barcodes": int(waiting["CUT_barcode_count"].sum()),
-                "waiting_qty": waiting["CUT_wip_basis"].clip(lower=0).sum(),
+                "waiting_barcodes": int(waiting[source_barcode_count].sum()),
+                "waiting_qty": waiting[source_wip_basis].clip(lower=0).sum(),
                 "median_waiting_minutes": minutes.median() if not minutes.empty else None,
             }
         )
@@ -460,8 +463,7 @@ flow = flow_metrics(filtered, summary)
 flow_elapsed = elapsed_metrics(summary)
 flow_parts = ['<div class="flow-scroll"><div class="flow-track">']
 for index, row in flow.iterrows():
-    tooltip = escape(f'WIP {row["wip_qty"]:,.0f} pcs · {int(row["wip_barcodes"]):,} Barcode', quote=True)
-    flow_parts.append(f'<div class="flow-card" title="{tooltip}"><div class="flow-name">{PROCESS_LABELS[row["process"]]}</div><div class="flow-meta">Input {row["input_qty"]:,.0f}<br>Output {row["output_qty"]:,.0f}</div><div class="flow-value">{row["wip_qty"]:,.0f}</div><div class="flow-meta">WIP (pcs)</div></div>')
+    flow_parts.append(f'<div class="flow-card"><div class="flow-name">{PROCESS_LABELS[row["process"]]}</div><div class="flow-meta">Input {row["input_qty"]:,.0f}<br>Output {row["output_qty"]:,.0f}</div><div class="flow-value">{int(row["wip_barcodes"]):,}</div><div class="flow-meta">WIP (Barcode)<br>WIP {row["wip_qty"]:,.0f} pcs</div></div>')
     if index < 5:
         elapsed_row = flow_elapsed.iloc[index]
         median_value = f"{elapsed_row['median_minutes']:.2f} min" if pd.notna(elapsed_row["median_minutes"]) else "-"

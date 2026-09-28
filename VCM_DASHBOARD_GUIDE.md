@@ -136,15 +136,15 @@ KPI ทั้งหมดเปลี่ยนตามตัวกรองท�
 
 ### สูตร WIP
 
-WIP ใช้เวลา Scan เป็นเงื่อนไข โดยหน้าการ์ดแสดงผลรวมจำนวนชิ้น ส่วน Tooltip แสดงจำนวน Barcode:
+WIP ใช้เวลา Scan เป็นเงื่อนไข โดยแต่ละ Process ใช้ Quantity และจำนวน Barcode จากข้อมูลของ Process นั้นเอง ไม่ได้ใช้ CUT เป็นฐานร่วมกัน:
 
 | WIP | เงื่อนไข | จำนวนชิ้นบนการ์ด | จำนวนใน Tooltip |
 |---|---|---|---|
-| CUT | มี CUT time และไม่มี SM2 time | ผลรวม `cut_qty` | นับ Barcode |
-| SM2 | มี SM2 time และไม่มี SM3 time | ผลรวม `ww_in_qty` ของ SM2 | นับ Barcode |
-| SM3 | มี SM3 time และไม่มี SEW time | ผลรวม `ww_in_qty` ของ SM3 | นับ Barcode |
-| SEW | มี SEW time และไม่มี WAIT_FN time | ผลรวม `qty` ของ SEW | นับ Barcode |
-| WAIT_FN | มี WAIT_FN time และไม่มี PACK time | ผลรวม `wait_fn_qty` | นับ Barcode |
+| CUT | มี CUT time และไม่มี SM2 time | จำนวนรายการ Barcode จาก CUT | ผลรวม `cut_qty` |
+| SM2 | มี SM2 time และไม่มี SM3 time | จำนวนรายการ Barcode จาก SM2 | ผลรวม `ww_in_qty` ของ SM2 |
+| SM3 | มี SM3 time และไม่มี SEW time | จำนวนรายการ Barcode จาก SM3 | ผลรวม `ww_in_qty` ของ SM3 |
+| SEW | มี SEW time และไม่มี WAIT_FN time | จำนวนรายการ Barcode จาก SEW | ผลรวม `qty` ของ SEW |
+| WAIT_FN | มี WAIT_FN time และไม่มี PACK time | จำนวนรายการ Barcode จาก WAIT_FN | ผลรวม `wait_fn_qty` |
 | PACK | จบกระบวนการ | `0` | `0` |
 
 ตัวอย่างแนวคิดของ CUT:
@@ -344,8 +344,8 @@ Minutes Since CUT = Current Time - CUT Time
 Total Lead Time = PACK Time - CUT Time
 
 WIP (pcs) = SUM(Process Input Qty)
-WIP Barcode Count = COUNT(DISTINCT Barcode)
+WIP Barcode Count = SUM(Barcode Count ของ Process ต้นทาง)
 โดยใช้เงื่อนไขเดียวกันคือ Process Time มีค่า และ Next Process Time ไม่มีค่า
 ```
 
-ไฟล์ `wip_by_so_no_query.sql` แยกผลลัพธ์เป็นคอลัมน์ `*_wip_pcs` และ `*_wip_barcode_count` โดยใช้ `cut_qty` และจำนวนรายการ Barcode จาก CUT เป็นฐานเดียวกันทุก Process จากนั้นใช้เวลาของ Process ต้นทางและ Process ถัดไปเป็นเงื่อนไขจัดกลุ่ม WIP ส่วน `total_wip_barcode_count` เป็นผลรวมจำนวนรายการ Barcode ที่เป็น WIP ทุก Process และไม่ได้นับ Barcode ทั้งหมดของ SO
+ไฟล์ `wip_by_so_no_query.sql` แยกผลลัพธ์เป็นคอลัมน์ `*_wip_pcs` และ `*_wip_barcode_count` โดยแต่ละ Process ใช้ Input Qty และจำนวนรายการ Barcode จาก Process ของตัวเอง จากนั้นใช้เวลาของ Process ต้นทางและ Process ถัดไปเป็นเงื่อนไขจัดกลุ่ม WIP ส่วน `total_wip_barcode_count` เป็นผลรวมจำนวนรายการ Barcode ที่เป็น WIP ทุก Process และไม่ได้นับ Barcode ทั้งหมดของ SO

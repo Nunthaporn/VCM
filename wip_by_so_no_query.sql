@@ -1,4 +1,4 @@
--- WIP pieces and barcode count: use CUT as the canonical base for every process.
+-- WIP pieces and barcode count: use the source process as the basis.
 -- WIP condition: source process has a scan time and the next process has no scan time.
 WITH process_events AS (
     SELECT
@@ -96,28 +96,28 @@ SELECT
     COALESCE(SUM(cut_barcode_count) FILTER (
         WHERE cut_time IS NOT NULL AND sm2_time IS NULL
     ), 0) AS cut_wip_barcode_count,
-    COALESCE(SUM(cut_qty) FILTER (
+    COALESCE(SUM(sm2_qty) FILTER (
         WHERE sm2_time IS NOT NULL AND sm3_time IS NULL
     ), 0) AS sm2_wip_pcs,
-    COALESCE(SUM(cut_barcode_count) FILTER (
+    COALESCE(SUM(sm2_barcode_count) FILTER (
         WHERE sm2_time IS NOT NULL AND sm3_time IS NULL
     ), 0) AS sm2_wip_barcode_count,
-    COALESCE(SUM(cut_qty) FILTER (
+    COALESCE(SUM(sm3_qty) FILTER (
         WHERE sm3_time IS NOT NULL AND sew_time IS NULL
     ), 0) AS sm3_wip_pcs,
-    COALESCE(SUM(cut_barcode_count) FILTER (
+    COALESCE(SUM(sm3_barcode_count) FILTER (
         WHERE sm3_time IS NOT NULL AND sew_time IS NULL
     ), 0) AS sm3_wip_barcode_count,
-    COALESCE(SUM(cut_qty) FILTER (
+    COALESCE(SUM(sew_qty) FILTER (
         WHERE sew_time IS NOT NULL AND wait_fn_time IS NULL
     ), 0) AS sew_wip_pcs,
-    COALESCE(SUM(cut_barcode_count) FILTER (
+    COALESCE(SUM(sew_barcode_count) FILTER (
         WHERE sew_time IS NOT NULL AND wait_fn_time IS NULL
     ), 0) AS sew_wip_barcode_count,
-    COALESCE(SUM(cut_qty) FILTER (
+    COALESCE(SUM(wait_fn_qty) FILTER (
         WHERE wait_fn_time IS NOT NULL AND pack_time IS NULL
     ), 0) AS wait_fn_wip_pcs,
-    COALESCE(SUM(cut_barcode_count) FILTER (
+    COALESCE(SUM(wait_fn_barcode_count) FILTER (
         WHERE wait_fn_time IS NOT NULL AND pack_time IS NULL
     ), 0) AS wait_fn_wip_barcode_count,
     0 AS pack_wip_pcs,
